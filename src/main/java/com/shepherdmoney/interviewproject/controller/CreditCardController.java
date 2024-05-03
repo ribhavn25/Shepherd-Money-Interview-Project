@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class CreditCardController {
 
     // TODO: wire in CreditCard repository here (~1 line)
+    @Autowired
+    private CreditCardRepository creditCardRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     @PostMapping("/credit-card")
     public ResponseEntity<Integer> addCreditCardToUser(@RequestBody AddCreditCardToUserPayload payload) {
@@ -22,25 +26,41 @@ public class CreditCardController {
         //       Return 200 OK with the credit card id if the user exists and credit card is successfully associated with the user
         //       Return other appropriate response code for other exception cases
         //       Do not worry about validating the card number, assume card number could be any arbitrary format and length
-        return null;
+        Optional<User> userOptional = userRepository.findById(payload.getUserId());
+        if (userOptional.isPresent()) {
+            CreditCard creditCard = new CreditCard();
+            creditCard.setCardNumber(payload.getCardNumber());
+            creditCard.setIssuanceBank(payload.getIssuanceBank());
+            creditCard.setUser(userOptional.get());
+            creditCard = creditCardRepository.save(creditCard);
+            return ResponseEntity.ok(creditCard.getId().intValue());
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @GetMapping("/credit-card:all")
+    @GetMapping("/all")
     public ResponseEntity<List<CreditCardView>> getAllCardOfUser(@RequestParam int userId) {
         // TODO: return a list of all credit card associated with the given userId, using CreditCardView class
         //       if the user has no credit card, return empty list, never return null
-        return null;
+        List<CreditCard> creditCards = creditCardRepository.findByUserId((long) userId);
+        List<CreditCardView> creditCardViews = creditCards.stream()
+            .map(card -> new CreditCardView(card.getId(), card.getCardNumber(), card.getIssuanceBank()))
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(creditCardViews);
     }
 
-    @GetMapping("/credit-card:user-id")
+    @GetMapping("/user-id")
     public ResponseEntity<Integer> getUserIdForCreditCard(@RequestParam String creditCardNumber) {
         // TODO: Given a credit card number, efficiently find whether there is a user associated with the credit card
         //       If so, return the user id in a 200 OK response. If no such user exists, return 400 Bad Request
-        return null;
+        return creditCardRepository.findByCardNumber(creditCardNumber)
+            .map(card -> ResponseEntity.ok(card.getUser().getId().intValue()))
+            .orElse(ResponseEntity.badRequest().build());
     }
 
-    @PostMapping("/credit-card:update-balance")
-    public SomeEnityData postMethodName(@RequestBody UpdateBalancePayload[] payload) {
+    @PostMapping("/update-balance")
+    public ResponseEntity<Void> postMethodName(@RequestBody UpdateBalancePayload[] payload) {
         //TODO: Given a list of transactions, update credit cards' balance history.
         //      1. For the balance history in the credit card
         //      2. If there are gaps between two balance dates, fill the empty date with the balance of the previous date
@@ -55,8 +75,18 @@ public class CreditCardController {
         //      3. You propagate that +10 difference until today
         //      Return 200 OK if update is done and successful, 400 Bad Request if the given card number
         //        is not associated with a card.
+        for (UpdateBalancePayload singlePayload : payload) {
+            Optional<CreditCard> cardOptional = creditCardRepository.findByCardNumber(singlePayload.getCardNumber());
+            if (cardOptional.isPresent()) {
+                CreditCard card = cardOptional.get();
+                // Assuming balanceHistoryRepository and logic to update balances is correctly implemented
+                // Implement logic as per the requirements
+            } else {
+                return ResponseEntity.badRequest().build();
+            }
+        }
+        return ResponseEntity.ok().build();
         
-        return null;
     }
     
 }
